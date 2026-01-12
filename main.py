@@ -1,5 +1,12 @@
 import numpy as np
 import pandas as pd
+import db_sql as db
+import os
+
+from sqlalchemy import text
+
+from dotenv import load_dotenv
+load_dotenv()
 
 monthly_category_sql = '''
 SELECT to_char(order_date, 'YYYY-MM') AS month,
@@ -74,7 +81,39 @@ def clean_marketing_data(df_raw: pd.DataFrame) -> pd.DataFrame:
     clean["month"] = pd.to_datetime(clean["month"]).dt.to_period("M").dt.to_timestamp()
     return clean
 
-csv_path = "marketing_spend.csv"
-df = clean_marketing_data(load_marketing_csv(csv_path))
 
-print(df)
+
+def main():
+    csv_path = "marketing_spend.csv"
+    df = clean_marketing_data(load_marketing_csv(csv_path))
+    print(df)
+    
+    orders_sql_path = "orders.sql"
+    pg_url = os.getenv("POSTGRES_URL")
+    pg_engine = db.get_postgres_engine(pg_url)
+    
+    try:
+        # with open(orders_sql_path, "r", encoding="utf-8") as f:
+        #     orders_sql = f.read()
+        # # print(orders_sql)
+        
+        with pg_engine.begin() as conn:
+            with open(orders_sql_path, "r", encoding="utf-8") as f:
+                orders_sql = f.read()
+        # print(orders_sql)
+            for s in orders_sql.split(";"):
+                s = s.strip()
+                if s and not s.startswith("--"):
+                    conn.execute(text(s))
+        # pd.read_sql(orders_sql, con=pg_engine)
+    except Exception as e:
+        print(e)
+    
+    # orders = db.load_orders_postgres(pg_engine)
+    
+    # print(orders)
+    df = pd.read_sql("SELECT * FROM orders;", con=pg_engine)
+    print(df.head())
+
+if __name__ == "__main__":
+    main()

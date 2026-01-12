@@ -1,19 +1,25 @@
 import sqlite3
 
-conn = sqlite3.connect('shop_sqlite.db')
-cur = conn.cursor()
+def main():
+    conn = sqlite3.connect('shop_sqlite.db')
+    cur = conn.cursor()
 
-with open('orders_sqlite.sql', 'r', encoding='utf-8') as f:
-    sql_script = f.read()
+    with open('orders_sqlite.sql', 'r', encoding='utf-8') as f:
+        sql_script = f.read()
 
-cur.executescript(sql_script)
+    cur.executescript(sql_script)
 
-cur.execute('''
-            SELECT * 
-            FROM orders 
-            LIMIT 5;
-            ''')
-print(cur.fetchall())
+    cur.execute('''
+                SELECT * 
+                FROM orders 
+                LIMIT 5;
+                ''')
+    print(cur.fetchall())
 
-conn.commit()
-conn.close()
+    conn.commit()
+    conn.close()
+    
+    
+    
+if __name__ == "__main__":
+    main()
