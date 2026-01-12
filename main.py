@@ -85,18 +85,14 @@ def clean_marketing_data(df_raw: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     csv_path = "marketing_spend.csv"
-    df = clean_marketing_data(load_marketing_csv(csv_path))
-    print(df)
+    df_marketing_clean = clean_marketing_data(load_marketing_csv(csv_path))
+    print(df_marketing_clean)
     
     orders_sql_path = "orders.sql"
     pg_url = os.getenv("POSTGRES_URL")
     pg_engine = db.get_postgres_engine(pg_url)
     
-    try:
-        # with open(orders_sql_path, "r", encoding="utf-8") as f:
-        #     orders_sql = f.read()
-        # # print(orders_sql)
-        
+    try:     
         with pg_engine.begin() as conn:
             with open(orders_sql_path, "r", encoding="utf-8") as f:
                 orders_sql = f.read()
@@ -109,11 +105,48 @@ def main():
     except Exception as e:
         print(e)
     
-    # orders = db.load_orders_postgres(pg_engine)
+    orders = db.load_orders_postgres(pg_engine)
+    print(orders)
     
-    # print(orders)
-    df = pd.read_sql("SELECT * FROM orders;", con=pg_engine)
-    print(df.head())
-
+    # df = pd.read_sql("SELECT * FROM orders;", con=pg_engine)
+    # print(df.head())
+    
+    def agg_sales_monthly(orders_df: pd.DataFrame) -> pd.DataFrame:
+        df = orders_df.copy()
+        df["month"] = df["order_date"].dt.to_period("M").dt.to_timestamp()
+        monthly_sales = df.groupby('month', as_index=False).agg(
+            order_count = ("order_id", "count"), #COUNT(order_id),
+            total_sales = ("order_amount", "sum") #SUM(order_amount)
+        )
+        return monthly_sales
+    
+    monthly_sales = agg_sales_monthly(orders)
+    # print(monthly_sales)
+    monthly_sales.to_csv("monthly_sales.csv", index=False)
+    
+    def merge_sales_marketing(df_marketing_clean: pd.DataFrame, monthly_sales: pd.DataFrame) -> pd.DataFrame:
+        df_marketing_clean = (
+            df_marketing_clean.groupby('month', as_index=False).agg(
+                marketing_spend = ("spend_amount", "sum")
+            )
+        )
+        merged = monthly_sales.merge(df_marketing_clean, on="month", how="left")
+        return merged
+    sales_marketing = merge_sales_marketing(df_marketing_clean, monthly_sales)
+    # print(sales_marketing)
+    sales_marketing.to_csv("sales_marketing.csv", index=False)
+    
+    # ROI
+    def monthly_roi(sales_marketing: pd.DataFrame) -> pd.DataFrame:
+        df = sales_marketing.copy()
+        df["roi"] = np.where(
+            df["marketing_spend"] > 0,
+            df["total_sales"] / df["marketing_spend"],
+            np.nan
+        )
+        return df[["month", "total_sales", "marketing_spend", "roi"]]
+    monthly_roi = monthly_roi(sales_marketing)
+    monthly_roi.to_csv("monthly_roi.csv", index=False)
+    
 if __name__ == "__main__":
     main()

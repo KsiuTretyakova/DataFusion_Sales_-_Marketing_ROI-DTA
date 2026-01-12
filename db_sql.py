@@ -8,9 +8,11 @@ def get_postgres_engine(pg_url: str):
 def load_orders_postgres(engine):
     query = '''
             SELECT * 
-            FROM orders 
-            LIMIT 5;
+            FROM orders; 
+            -- LIMIT 5;
             '''
     df = pd.read_sql(query, con=engine)
+    df["order_date"] = pd.to_datetime(df["order_date"])
+    df["order_amount"] = pd.to_numeric(df["order_amount"], errors='coerce')
     return df
     
