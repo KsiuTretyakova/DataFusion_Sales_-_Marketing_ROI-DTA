@@ -15,8 +15,8 @@ import sqlite3
 sns.set(style="whitegrid", font_scale=1.1)
 plt.rcParams["figure.figsize"] = (12, 6)
 
-# Ми будемо викликати функції з dp.py
-from dp import (
+# Ми будемо викликати функції з db_psql.py
+from db_psql import (
     get_postgres_engine,
     init_sqlite_db,
     load_orders_postgres,
@@ -35,6 +35,10 @@ from dp import (
     extra_presentation_tables
 )
 
+# Задайте змінні оточення
+from dotenv import load_dotenv
+load_dotenv()
+
 def main():
     # 0) Налаштування шляхів
     csv_path = "marketing_spend.csv"  # експортований CSV з Google Sheets
@@ -43,13 +47,9 @@ def main():
     orders_sqlite_sql_path = "orders_sqlite.sql"  # якщо створюєте через SQLite
 
     # 1) Варіант A: PostgreSQL (рекомендовано)
-    # Задайте змінні оточення або тут рядок підключення
-    # Напр.: POSTGRES_URL=postgresql+psycopg2://user:password@host:port/dbname
+    # Рядок підключення змінних оточення
     pg_url = os.getenv("POSTGRES_URL")
     pg_engine = get_postgres_engine(pg_url)
-
-    # Імпорт orders.sql у PostgreSQL (одноразово, якщо таблиця ще не існує):
-    # Виконайте файл orders.sql через psql або за потреби через engine.execute(open(...).read())
 
     # 2) Альтернатива B: SQLite (локально, без сервера)
     # SQLite зручний для навчання та повторюваності
